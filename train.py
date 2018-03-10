@@ -22,15 +22,17 @@ def gen_lines(file, lc):
                 yield line
 
 
-def gen_bigrams(token):
-    t0 = '$'
-    for t1 in token:
-        yield t0, t1
-        if t1 in '.!?':
-            yield t1, '$'
-            t0 = '$'
+def gen_ngrams(token, n):
+    t = ['$' for _ in range(n - 1)]
+    for ti in token:
+        yield t + [ti]
+        if ti in '.!?':
+            for i in range(1, n - 1):
+                yield t[i:] + [ti] + ['$'] * i
+
+            t = ['$' for _ in range(n - 1)]
         else:
-            t0 = t1
+            t = t[1:] + [ti]
 
 
 def first_step(args):
@@ -40,11 +42,11 @@ def first_step(args):
     else:
         for file in os.listdir(args['input_dir']):
             if file[-4:] == '.txt':
-                lines = gen_lines(os.path.join(args['input_dir'], file), args.get('LC'))
+                lines = gen_lines(os.path.join(args['input_dir'], file), args.get('lc'))
 
     token = gen_token(lines)
-    bigrams = gen_bigrams(token)
-    print('\n'.join(['{0} {1}'.format(i[0], i[1]) for i in bigrams]))
+    bigrams = gen_ngrams(token, args['ngrams'])
+    print('\n'.join([' '.join(i) for i in bigrams]))
 
 
 if __name__ == "__main__":
@@ -53,5 +55,6 @@ if __name__ == "__main__":
     parser.add_argument('--input-dir', action='store',
                         help='destination to texts. If it isn\'t set, uses texts from stdin')
     parser.add_argument('model', action='store', help='destination to model file')
+    parser.add_argument('--ngrams', action='store', default=2, type=int, help='number of using words in one token')
     args = vars(parser.parse_args())
     first_step(args)

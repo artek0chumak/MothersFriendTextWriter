@@ -77,7 +77,7 @@ def create_text(t):
             text += '\n'
         else:
             text += ' ' + i
-
+            
     if t[-1] not in ('.', '!', '?'):
         text += '.'
 

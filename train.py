@@ -8,7 +8,7 @@ import re
 from collections import Counter
 import pickle
 
-r_alphabet = re.compile('[а-яА-Я0-9-]+|[.,:;!?]+')
+r_alphabet = re.compile('[а-яА-Я0-9]+|[-.,:;!?]+')
 
 
 def gen_token(files):

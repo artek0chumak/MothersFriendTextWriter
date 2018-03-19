@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Обучение модели для генерации текста на основоне других текстов.
 Используйте -h для вызова справки.
@@ -103,7 +104,7 @@ def update_model(model, ngrams):
     :return: Обновленная модель
     :rtype: dict
     """
-    u_model = Counter(tuple(ngrams))
+    u_model = Counter([tuple(i) for i in ngrams])
     for i in u_model:
         if i in model:
             model[i] += u_model[i]

@@ -1,21 +1,33 @@
-"""Генератор текста на основе биграмм. Для генерации текста надо использовать уже обученную модель(обучение идет из
-предлагаемых пользователем текстов). Для генерации текста можно указать параметры - начальное слово, длину. Вывод может
-происходить как и в stdout, так и в файл."""
+"""
+Генератор текста из модели, полученной обучением с помощью train.py.
+Используйте -h для вызова справки.
+"""
 import argparse
 import random
 import pickle
 
 
-def load_model(dist_model):
-    """Load model from file"""
-    with open(dist_model, 'rb') as f:
+def load_model(dest_model):
+    """
+    Загрузка модели из файла
+    :param dest_model: Расположение файла модели
+    :type dest_model: str
+    :return: Словарь кортежа слов в частыт
+    :rtype: dict
+    """
+    with open(dest_model, 'rb') as f:
         return pickle.load(f)
 
 
 def weighted_choices(choices):
-    """Choise by weight"""
+    """
+    Куммулятивное распределение
+    :param choices: Список слов и их частоты
+    :type choices: list
+    :return: Выбранное слово
+    :rtype: str
+    """
     total = sum(w for c, w in choices)
-    # Choise float from 0 to total
     r = random.uniform(0, total)
     upto = 0
     for c, w in choices:
@@ -25,22 +37,38 @@ def weighted_choices(choices):
 
 
 def generate_text(model, length, seed):
-    """Main function to generate text"""
-    t = []
+    """
+    Генерация текста
+    :param model: Модель текстов
+    :param length: Длина текста в словах(знаки пунктуации считаются за слова)
+    :param seed: Начальное слово
+    :type model: dict
+    :type length: int
+    :type seed: str
+    :return: Список слов
+    :rtype: list
+    """
+    l_ngrams = len(next(iter(model)))
+    t = ['$' for _ in range(l_ngrams - 1)]
     if seed is None:
-        seed = random.choice(list(i[0] for i in model.keys()))
+        seed = random.choice([i[-1] for i in model if list(i[:-1]) == t])
     t.append(seed)
-    # Number of punctuation symbols
-    pnc = 0
-    while len(t) - pnc < length:
-        t.append(weighted_choices([(i[1], model[i]) for i in model if i[0] == t[-1]]))
-        if t[-1] in (',', '.', '!', '?', ';', ':'):
-            pnc += 1
-    return t
+    while len(t) < length + l_ngrams:
+        t.append(weighted_choices([(i[-1], model[i]) for i in model if list(i[:-1]) == t[-l_ngrams + 1:]]))
+        if t[-1] is None:
+            t[-1] = random.choice([i[-1] for i in model if list(i[:-1]) == ['$' for _ in range(l_ngrams - 1)]])
+
+    return t[l_ngrams - 1:]
 
 
 def create_text(t):
-    """Create text from list of tokens"""
+    """
+    Создает текст из списка слов
+    :param t: Список слов
+    :type t: list
+    :return: Сгенерированный текст
+    :rtype: str
+    """
     text = ''
     for i in t:
         if i in (',', '.', '!', '?', ';', ':'):
@@ -49,8 +77,7 @@ def create_text(t):
             text += '\n'
         else:
             text += ' ' + i
-
-    # Adding last dot
+            
     if t[-1] not in ('.', '!', '?'):
         text += '.'
 
@@ -58,13 +85,25 @@ def create_text(t):
 
 
 def save_text(text, text_dest):
-    """Save text to file"""
+    """
+    Сохраняет текст в файл
+    :param text: Текст
+    :param text_dest: Располжение файла текста
+    :type text: str
+    :type text_dest: str
+    :return: None
+    """
     with open(text_dest, 'w') as f:
         f.write(text)
 
 
 def main(args):
-    """Main function"""
+    """
+    Главная функция
+    :param args: Аргументы запуска генератора
+    :type args: dict
+    :return: None
+    """
     model = load_model(args['model'])
     t = generate_text(model, args['length'], args['seed'])
     text = create_text(t)

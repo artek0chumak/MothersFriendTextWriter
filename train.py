@@ -9,14 +9,14 @@ import re
 from collections import Counter
 import pickle
 
-r_alphabet = re.compile('[а-яА-Я0-9]+|[-.,:;!?]+')
+r_alphabet = re.compile('[а-яА-Я0-9]+|[-.,!?;]')
 
 
 def gen_token(files):
     """
     Генератор слов из файлов текстов
     :param files: Список путей к файлам
-    :type files: list
+    :type files: generator
     :return: Слово из файла
     :rtype: str
     """
@@ -55,10 +55,12 @@ def open_files(dest_file, lc):
     :rtype: list
     """
     if dest_file is None:
-        #Один input - одна строка в файле
-        return [[input()]]
+        # Один input - одна строка в одном файле
+        yield [input()]
     else:
-        return [gen_lines(os.path.join(dest_file, file), lc) for file in os.listdir(dest_file) if file[-4:] == '.txt']
+        for file in os.listdir(dest_file):
+            if file[-4:] == '.txt':
+                yield gen_lines(os.path.join(dest_file, file), lc)
 
 
 def gen_ngrams(token, n):
@@ -74,7 +76,7 @@ def gen_ngrams(token, n):
     t = ['$' for _ in range(n - 1)]
     for ti in token:
         yield t + [ti]
-        if ti in '.!?':
+        if ti in '.?!;':
             for i in range(1, n - 1):
                 yield t[i:] + [ti] + ['$'] * i
 
@@ -83,44 +85,13 @@ def gen_ngrams(token, n):
             t = t[1:] + [ti]
 
 
-def gen_model(ngrams):
-    """
-    Генерация модели
-    :param ngrams: Генератор n-грамм
-    :type ngrams: generator
-    :return: Словарь из n-граммы в частоту распределения
-    """
-    p_model = Counter([tuple(i) for i in ngrams])
-    return {i: p_model[i] for i in p_model}
-
-
-def update_model(model, ngrams):
-    """
-    Обновление модели
-    :param model: Модель
-    :param ngrams: Генератор n-грамм
-    :type model: dict
-    :type ngrams: generator
-    :return: Обновленная модель
-    :rtype: dict
-    """
-    u_model = Counter([tuple(i) for i in ngrams])
-    for i in u_model:
-        if i in model:
-            model[i] += u_model[i]
-        else:
-            model[i] = u_model[i]
-
-    return model
-
-
 def load_model(model_dest):
     """
     Загрузка модели из файла
     :param model_dest: Расположение файла
     :type: str
     :return: Модель
-    :rtype: dict
+    :rtype: Counter
     """
     with open(model_dest, 'rb') as f:
         return pickle.load(f)
@@ -131,7 +102,7 @@ def save_model(model, model_dest):
     Сохранение модели в файл
     :param model: Модель
     :param model_dest: Расположение файла
-    :type model: dict
+    :type model: Counter
     :type model_dest: str
     :return: None
     """
@@ -149,12 +120,14 @@ def train_model(ngrams, model_dest):
     :return: None
     """
     if model_dest is None:
-        model = gen_model(ngrams)
+        # Создание модели
+        model = Counter([tuple(i) for i in ngrams])
         model_dest = input("Write destination for model file:\n")
         save_model(model, model_dest)
     else:
+        # Обновление модели
         model = load_model(model_dest)
-        model = update_model(model, ngrams)
+        model.update([tuple(i) for i in ngrams])
         save_model(model, model_dest)
 
 

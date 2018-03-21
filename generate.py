@@ -6,6 +6,7 @@
 import argparse
 import random
 import pickle
+from collections import Counter
 
 
 def load_model(dest_model):
@@ -13,8 +14,8 @@ def load_model(dest_model):
     Загрузка модели из файла
     :param dest_model: Расположение файла модели
     :type dest_model: str
-    :return: Словарь кортежа слов в частыт
-    :rtype: dict
+    :return: Словарь кортежа слов в частоты
+    :rtype: Counter
     """
     with open(dest_model, 'rb') as f:
         return pickle.load(f)
@@ -23,11 +24,12 @@ def load_model(dest_model):
 def weighted_choices(choices):
     """
     Куммулятивное распределение
-    :param choices: Список слов и их частоты
-    :type choices: list
+    :param choices: Последовательность слов и их частоты
+    :type choices: list or tuple
     :return: Выбранное слово
-    :rtype: str
+    :rtype: str or None
     """
+    # c - слово, w - вес
     total = sum(w for c, w in choices)
     r = random.uniform(0, total)
     upto = 0
@@ -36,6 +38,8 @@ def weighted_choices(choices):
             return c
         upto += w
 
+    return None
+
 
 def generate_text(model, length, seed):
     """
@@ -43,44 +47,63 @@ def generate_text(model, length, seed):
     :param model: Модель текстов
     :param length: Длина текста в словах(знаки пунктуации считаются за слова)
     :param seed: Начальное слово
-    :type model: dict
+    :type model: Counter
     :type length: int
     :type seed: str
-    :return: Список слов
-    :rtype: list
+    :return: Генератор слов
+    :rtype: generator
     """
+    # Нахождение числа слов в n-грамме
     l_ngrams = len(next(iter(model)))
-    t = ['$' for _ in range(l_ngrams - 1)]
-    if seed is None:
-        seed = random.choice([i[-1] for i in model if list(i[:-1]) == t])
-    t.append(seed)
-    while len(t) < length + l_ngrams:
-        t.append(weighted_choices([(i[-1], model[i]) for i in model if list(i[:-1]) == t[-l_ngrams + 1:]]))
-        if t[-1] is None:
-            t[-1] = random.choice([i[-1] for i in model if list(i[:-1]) == ['$' for _ in range(l_ngrams - 1)]])
+    # Список без слов
+    e_list = ['$' for _ in range(l_ngrams - 1)]
 
-    return t[l_ngrams - 1:]
+    if (seed not in set(i[0] for i in model)) and (seed is not None):
+        seed = None
+    if seed is None:
+        seed = random.choice(tuple(i[-1] for i in model if list(i[:-1]) == e_list))
+    t = e_list[1:] + [seed]
+
+    # Первое слово
+    yield seed
+
+    while length > 0:
+        # Выбор нужного слова на основе n-1 предыдущих
+        temp = weighted_choices(tuple((i[-1], model[i]) for i in model if list(i[:-1]) == t))
+        if temp is None:
+            # Выбор нового слова, если не удалось найти подходящий по последним
+            temp = random.choice(tuple(i[-1] for i in model if list(i[:-1]) == e_list))
+        # Проверка на знак пунктуации, так как length - количество слов
+        if temp not in '-.,!?;':
+            length -= 1
+
+        # Удаляем первое слово, так как оно больше нам не нужно
+        t = t[1:] + [temp]
+        yield temp
 
 
 def create_text(t):
     """
     Создает текст из списка слов
-    :param t: Список слов
-    :type t: list
+    :param t: Генератор слов
+    :type t: generator
     :return: Сгенерированный текст
     :rtype: str
     """
     text = ''
     for i in t:
-        if i in (',', '.', '!', '?', ';', ':'):
+        if i in '-.,!?;':
             text += i
         elif i == '$':
             text += '\n'
         else:
             text += ' ' + i
-            
-    if t[-1] not in ('.', '!', '?'):
+
+    # Добавление точки в конце
+    if (text[-1] != '.') and (text[-1] not in '-,!?;'):
         text += '.'
+    elif text[-1] in '-,!?;':
+        text[-1] = '.'
 
     return text
 

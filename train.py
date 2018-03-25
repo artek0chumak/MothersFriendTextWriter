@@ -7,12 +7,12 @@ import argparse
 import os
 import re
 from collections import Counter
-import pickle
+import json
 
-r_alphabet = re.compile('[а-яА-Я0-9]+|[-.,!?;]')
+r_alphabet = re.compile('[а-яА-Я0-9]+|[\w]+')
 
 
-def gen_token(files):
+def gen_token(files, n):
     """
     Генератор слов из файлов текстов
     :param files: Список путей к файлам
@@ -56,7 +56,10 @@ def open_files(dest_file, lc):
     """
     if dest_file is None:
         # Один input - одна строка в одном файле
-        yield [input()]
+        if lc:
+            yield [input().lower()]
+        else:
+            yield [input()]
     else:
         for root, dirs, files in os.walk(dest_file):
             for file in files:
@@ -74,16 +77,11 @@ def gen_ngramms(token, n):
     :return: Список из слов
     :rtype: list
     """
-    t = ['$' for _ in range(n - 1)]
+    it_token = iter(token)
+    t = [next(it_token) for _ in range(n - 1)]
     for ti in token:
         yield t + [ti]
-        if ti in '.?!;':
-            for i in range(1, n - 1):
-                yield t[i:] + [ti] + ['$'] * i
-
-            t = ['$' for _ in range(n - 1)]
-        else:
-            t = t[1:] + [ti]
+        t = t[1:] + [ti]
 
 
 def load_model(model_dest):
@@ -94,8 +92,8 @@ def load_model(model_dest):
     :return: Модель
     :rtype: Counter
     """
-    with open(model_dest, 'rb') as f:
-        return pickle.load(f)
+    with open(model_dest, 'r') as f:
+        return json.load(fp=f)
 
 
 def save_model(model, model_dest):
@@ -107,8 +105,8 @@ def save_model(model, model_dest):
     :type model_dest: str
     :return: None
     """
-    with open(model_dest, 'wb') as f:
-        pickle.dump(model, f)
+    with open(model_dest, 'w') as f:
+        json.dump(obj=model, fp=f)
 
 
 def train_model(ngramms, model_dest):
@@ -122,12 +120,12 @@ def train_model(ngramms, model_dest):
     """
     if os.path.isfile(model_dest):
         # Обновление модели
-        model = load_model(model_dest)
-        model.update([tuple(i) for i in ngramms])
+        model = Counter(load_model(model_dest))
+        model.update([" ".join(i) for i in ngramms])
         save_model(model, model_dest)
     else:
         # Создание модели
-        model = Counter([tuple(i) for i in ngramms])
+        model = Counter([" ".join(i) for i in ngramms])
         save_model(model, model_dest)
 
 
@@ -139,9 +137,9 @@ def main(args):
     :return: None
     """
     files = open_files(args['input_dir'], args['lc'])
-    token = gen_token(files)
-    ngrams = gen_ngramms(token, args['ngramms'])
-    train_model(ngrams, args['model'])
+    token = gen_token(files, args['ngramms'])
+    ngramms = gen_ngramms(token, args['ngramms'])
+    train_model(ngramms, args['model'])
 
 
 if __name__ == "__main__":

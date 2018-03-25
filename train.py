@@ -58,12 +58,13 @@ def open_files(dest_file, lc):
         # Один input - одна строка в одном файле
         yield [input()]
     else:
-        for file in os.listdir(dest_file):
-            if file[-4:] == '.txt':
-                yield gen_lines(os.path.join(dest_file, file), lc)
+        for root, dirs, files in os.walk(dest_file):
+            for file in files:
+                if file.endswith('.txt'):
+                    yield gen_lines(os.path.join(root, file), lc)
 
 
-def gen_ngrams(token, n):
+def gen_ngramms(token, n):
     """
     Генерация n-грамм
     :param token: Генератор токена
@@ -110,24 +111,23 @@ def save_model(model, model_dest):
         pickle.dump(model, f)
 
 
-def train_model(ngrams, model_dest):
+def train_model(ngramms, model_dest):
     """
     Главная функция обучения модели
-    :param ngrams: Генератор n-грамм
+    :param ngramms: Генератор n-грамм
     :param model_dest: Расположение файла модели
-    :type ngrams: generator
+    :type ngramms: generator
     :type model_dest: str
     :return: None
     """
-    if model_dest is None:
-        # Создание модели
-        model = Counter([tuple(i) for i in ngrams])
-        model_dest = input("Write destination for model file:\n")
-        save_model(model, model_dest)
-    else:
+    if os.path.isfile(model_dest):
         # Обновление модели
         model = load_model(model_dest)
-        model.update([tuple(i) for i in ngrams])
+        model.update([tuple(i) for i in ngramms])
+        save_model(model, model_dest)
+    else:
+        # Создание модели
+        model = Counter([tuple(i) for i in ngramms])
         save_model(model, model_dest)
 
 
@@ -140,16 +140,21 @@ def main(args):
     """
     files = open_files(args['input_dir'], args['lc'])
     token = gen_token(files)
-    ngrams = gen_ngrams(token, args['ngrams'])
+    ngrams = gen_ngramms(token, args['ngramms'])
     train_model(ngrams, args['model'])
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train model to generate texts.', prog='train.py')
-    parser.add_argument('--lc', action='store_true', help='apply lower_case() to texts')
+    parser = argparse.ArgumentParser(
+        description='Train model to generate texts.', prog='train.py')
+    parser.add_argument('--lc', action='store_true',
+                        help='apply lower_case() to texts')
     parser.add_argument('--input-dir', action='store',
-                        help='destination to texts. If it isn\'t set, uses texts from stdin')
-    parser.add_argument('--model', action='store', help='destination to model file')
-    parser.add_argument('--ngrams', action='store', default=2, type=int, help='number of using words in one token')
+                        help='destination to texts. If it isn'
+                             '\'t set, uses texts from stdin')
+    parser.add_argument('--model', action='store',
+                        help='destination to model file')
+    parser.add_argument('--ngramms', action='store', default=2, type=int,
+                        help='number of using words in one token')
     args = vars(parser.parse_args())
     main(args)

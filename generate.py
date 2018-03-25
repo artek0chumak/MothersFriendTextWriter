@@ -61,7 +61,8 @@ def generate_text(model, length, seed):
     if (seed not in set(i[0] for i in model)) and (seed is not None):
         seed = None
     if seed is None:
-        seed = random.choice(tuple(i[-1] for i in model if list(i[:-1]) == e_list))
+        seed = random.choice(tuple(i[-1]
+                                   for i in model if list(i[:-1]) == e_list))
     t = e_list[1:] + [seed]
 
     # Первое слово
@@ -69,10 +70,13 @@ def generate_text(model, length, seed):
 
     while length > 0:
         # Выбор нужного слова на основе n-1 предыдущих
-        temp = weighted_choices(tuple((i[-1], model[i]) for i in model if list(i[:-1]) == t))
+        temp = weighted_choices(tuple((i[-1], model[i])
+                                      for i in model if list(i[:-1]) == t))
         if temp is None:
             # Выбор нового слова, если не удалось найти подходящий по последним
-            temp = random.choice(tuple(i[-1] for i in model if list(i[:-1]) == e_list))
+            temp = random.choice(tuple(i[-1]
+                                       for i in model
+                                       if list(i[:-1]) == e_list))
         # Проверка на знак пунктуации, так как length - количество слов
         if temp not in '-.,!?;':
             length -= 1
@@ -138,11 +142,15 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generate text using model.', prog='generate.py')
-    parser.add_argument('model', action='store', help='destination to model file')
+    parser = argparse.ArgumentParser(description='Generate text using model.',
+                                     prog='generate.py')
+    parser.add_argument('model', action='store',
+                        help='destination to model file')
     parser.add_argument('--seed', action='store', help='set starting word')
-    parser.add_argument('length', action='store', type=int, help='length of generated text')
+    parser.add_argument('length', action='store', type=int,
+                        help='length of generated text')
     parser.add_argument('--output', action='store',
-                        help='destination to output file. If it isn\'t set, uses stdout')
+                        help='destination to output file.'
+                             ' If it isn\'t set, uses stdout')
     args = vars(parser.parse_args())
     main(args)

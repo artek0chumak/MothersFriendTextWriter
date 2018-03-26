@@ -5,7 +5,7 @@
 """
 import argparse
 import random
-import json
+import pickle
 
 
 def load_model(dest_model):
@@ -16,9 +16,8 @@ def load_model(dest_model):
     :return: Словарь кортежа слов в частоты
     :rtype: dict
     """
-    with open(dest_model, 'r') as f:
-        p_model = json.load(f)
-        return {tuple(i.split(' ')): p_model[i] for i in p_model}
+    with open(dest_model, 'rb') as f:
+        return pickle.load(f)
 
 
 def weighted_choices(choices):
@@ -57,7 +56,8 @@ def generate_text(model, length, seed):
 
     if seed is None:
         seed = random.choice(tuple(i[0] for i in model))
-
+    if seed not in tuple(i[0] for i in model):
+        raise ValueError('Данного слова нет в модели')
     yield seed
 
     t = [seed] + list(random.choice(tuple(i[1:n-1] for i in model

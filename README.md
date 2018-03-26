@@ -6,7 +6,7 @@
 
 ### Prerequisites
 
-Проект написан на python 3.6, используются только стандартные библиотеки (json, random, argparse, collections). Для установки python перейдите по ссылке: [https://www.python.org](https://www.python.org/).
+Проект написан на python 3.6, используются только стандартные библиотеки (pickle, random, argparse, collections). Для установки python перейдите по ссылке: [https://www.python.org](https://www.python.org/).
 
 ### Training
 Для запуска обучения модели используется файл train.py

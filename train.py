@@ -7,12 +7,12 @@ import argparse
 import os
 import re
 from collections import Counter
-import json
+import pickle
 
 r_alphabet = re.compile('[а-яА-Я0-9]+|[\w]+')
 
 
-def gen_token(files, n):
+def gen_token(files):
     """
     Генератор слов из файлов текстов
     :param files: Список путей к файлам
@@ -92,8 +92,8 @@ def load_model(model_dest):
     :return: Модель
     :rtype: Counter
     """
-    with open(model_dest, 'r') as f:
-        return json.load(fp=f)
+    with open(model_dest, 'rb') as f:
+        return pickle.load(f)
 
 
 def save_model(model, model_dest):
@@ -105,8 +105,8 @@ def save_model(model, model_dest):
     :type model_dest: str
     :return: None
     """
-    with open(model_dest, 'w') as f:
-        json.dump(obj=model, fp=f)
+    with open(model_dest, 'wb') as f:
+        pickle.dump(model, f)
 
 
 def train_model(ngramms, model_dest):
@@ -121,11 +121,11 @@ def train_model(ngramms, model_dest):
     if os.path.isfile(model_dest):
         # Обновление модели
         model = Counter(load_model(model_dest))
-        model.update([" ".join(i) for i in ngramms])
+        model.update([tuple(i) for i in ngramms])
         save_model(model, model_dest)
     else:
         # Создание модели
-        model = Counter([" ".join(i) for i in ngramms])
+        model = Counter([tuple(i) for i in ngramms])
         save_model(model, model_dest)
 
 
@@ -137,7 +137,7 @@ def main(args):
     :return: None
     """
     files = open_files(args['input_dir'], args['lc'])
-    token = gen_token(files, args['ngramms'])
+    token = gen_token(files)
     ngramms = gen_ngramms(token, args['ngramms'])
     train_model(ngramms, args['model'])
 

@@ -9,10 +9,11 @@ import re
 from collections import Counter
 import pickle
 
+r_alpha_with_punc = re.compile('[а-яА-Я]+|[a-zA-Z]+|[,.!?;:-]')
 r_alphabet = re.compile('[а-яА-Я]+|[a-zA-Z]+')
 
 
-def gen_token(files):
+def gen_token(files, punc):
     """
     Генератор слов из файлов текстов
     :param files: Список путей к файлам
@@ -22,8 +23,12 @@ def gen_token(files):
     """
     for file in files:
         for line in file:
-            for token in r_alphabet.findall(line):
-                yield token
+            if punc:
+                for token in r_alpha_with_punc.findall(file):
+                    yield token
+            else:
+                for token in r_alphabet.findall(line):
+                    yield token
 
 
 def gen_lines(file, lc):
@@ -137,7 +142,7 @@ def main(args):
     :return: None
     """
     files = open_files(args['input_dir'], args['lc'])
-    token = gen_token(files)
+    token = gen_token(files, args['punc'])
     ngramms = gen_ngramms(token, args['ngramms'])
     train_model(ngramms, args['model'])
 
@@ -154,5 +159,7 @@ if __name__ == "__main__":
                         help='destination to model file')
     parser.add_argument('--ngramms', action='store', default=2, type=int,
                         help='number of using words in one token')
+    parser.add_argument('--punc', action='store_true',
+                        help='add punctuation marks')
     args = vars(parser.parse_args())
     main(args)

@@ -53,9 +53,12 @@ def generate_text(model, length, seed):
     :rtype: generator
     """
     n = len(next(iter(model)))
+    pnt = 0
 
     if seed is None:
         seed = random.choice(tuple(i[0] for i in model))
+        if seed in ',.!?;:-':
+            pnt += 1
     if seed not in tuple(i[0] for i in model):
         raise ValueError('Данного слова нет в модели')
     yield seed
@@ -65,13 +68,15 @@ def generate_text(model, length, seed):
     if len(t) == 1:
         t += random.choice(tuple(i[1:n-1] for i in model))
 
-    while length - 1 > 0:
+    while length + pnt - 1 > 0:
         # Выбор нужного слова на основе n-1 предыдущих
         temp = weighted_choices(tuple((i[-1], model[i])
                                       for i in model if list(i[:-1]) == t))
         if temp is None:
             # Выбор нового слова, если не удалось найти подходящий по последним
             temp = random.choice(tuple(i[0] for i in model))
+        if temp in ',.!?;:-':
+            pnt += 1
 
         # Удаляем первое слово, так как оно больше нам не нужно
         t = t[1:] + [temp]
@@ -87,7 +92,15 @@ def create_text(t):
     :return: Сгенерированный текст
     :rtype: str
     """
-    return ' '.join(t)
+
+    res = ''
+    for i in t:
+        if i in ',.!?;:':
+            res += i
+        else:
+            res += ' ' + i
+
+    return res
 
 
 def save_text(text, text_dest):

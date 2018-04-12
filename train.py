@@ -6,9 +6,8 @@
 import argparse
 import os
 import re
-from collections import Counter
-import pickle
 import sys
+import model
 
 
 def gen_token(files, use_punc):
@@ -86,54 +85,6 @@ def gen_ngramms(token, n):
         t = t[1:] + [ti]
 
 
-def load_model(model_dest):
-    """
-    Загрузка модели из файла
-    :param model_dest: Расположение файла
-    :type: str
-    :return: Модель
-    :rtype: Counter or None
-    """
-    try:
-        with open(model_dest, 'rb') as f:
-            return pickle.load(f)
-    except FileNotFoundError:
-        return None
-
-
-def save_model(model, model_dest):
-    """
-    Сохранение модели в файл
-    :param model: Модель
-    :param model_dest: Расположение файла
-    :type model: Counter
-    :type model_dest: str
-    :return: None
-    """
-    with open(model_dest, 'wb') as f:
-        pickle.dump(model, f)
-
-
-def train_model(ngramms, model_dest, upd_it):
-    """
-    Главная функция обучения модели
-    :param ngramms: Генератор n-грамм
-    :param model_dest: Расположение файла модели
-    :param upd_it: Флаг обновления модели
-    :type ngramms: generator
-    :type model_dest: str
-    :type upd_it: bool
-    :return: None
-    """
-    model = load_model(model_dest)
-    if upd_it:
-        model.update([tuple(i) for i in ngramms])
-    else:
-        model = Counter([tuple(i) for i in ngramms])
-
-    save_model(model, model_dest)
-
-
 def main(args):
     """
     Главная функция
@@ -144,7 +95,7 @@ def main(args):
     files = open_files(args.input_dir, args.lc)
     token = gen_token(files, args.punc)
     ngramms = gen_ngramms(token, args.ngramms)
-    train_model(ngramms, args.model, args.update)
+    model.train_model(ngramms, args.model, args.update)
 
 
 if __name__ == "__main__":

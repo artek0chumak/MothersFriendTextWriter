@@ -5,19 +5,7 @@
 """
 import argparse
 import random
-import pickle
-
-
-def load_model(dest_model):
-    """
-    Загрузка модели из файла
-    :param dest_model: Расположение файла модели
-    :type dest_model: str
-    :return: Словарь кортежа слов в частоты
-    :rtype: dict
-    """
-    with open(dest_model, 'rb') as f:
-        return pickle.load(f)
+import model
 
 
 def weighted_choices(choices):
@@ -40,55 +28,93 @@ def weighted_choices(choices):
     return None
 
 
-def generate_text(model, length, seed):
+def first_words(m, start, start_words):
+    """
+    Поиск первых слов
+    :param m: Модель текстов
+    :param start: Начальное слово
+    :param start_words: Список слов, с которых может начинаться предложения
+    :type m: Counter
+    :type start: str
+    :type start_words: tuple
+    :return: Список из n слов
+    :rtype: list
+    """
+
+    if start is None:
+        start = random.choice(start_words)
+    # Если seed был None, то мы после выбрали слово, которое точно
+    # находится в модели
+    elif start not in start_words:
+        raise KeyError('Данного слова нет в модели')
+
+    # Поиск первых n-1 слов среди n-грамм, используя
+    # seed в качетсве первого
+    ngramm = [start] + list(random.choice(tuple(i[1:] for i in m
+                                                if i[0] == start)))
+    # Если не нашлись такие n-граммы, то берём любые
+    if len(ngramm) == 1:
+        ngramm += random.choice(tuple(i[1:] for i in m))
+
+    return ngramm
+
+
+def next_words(m, ngramm, start_words):
+    """
+    Нахождение следующей nграммы
+    :param m: Модель текстов
+    :param ngramm: Список слов
+    :param start_words: Список слов, с которых может начинаться предложения
+    :type m: Counter
+    :type ngramm: list
+    :type start_words: tuple
+    :return: Список слов
+    :rtype: list
+    """
+    temp = weighted_choices(tuple((i[-1], m[i])
+                                  for i in m if list(i[:-1]) == ngramm[1:]))
+
+    if temp is None:
+        # Выбор нового слова, если
+        # не удалось найти подходящий по последним
+        temp = random.choice(start_words)
+
+    # Удаляем первое слово, так как оно больше нам не нужно
+    ngramm = ngramm[1:] + [temp]
+
+    return ngramm
+
+
+def generate_text(m, length, seed):
     """
     Генерация текста
-    :param model: Модель текстов
+    :param m: Модель текстов
     :param length: Длина текста в словах(знаки пунктуации считаются отдельно)
     :param seed: Начальное слово
-    :type model: dict
+    :type m: dict or Counter
     :type length: int
     :type seed: str
     :return: Генератор слов
     :rtype: generator
     """
-    n = len(next(iter(model)))
-    pnt = 0
     # Слова, с которых могут начинться предложения.
-    start_word = tuple(i[0] for i in model)
+    start_words = tuple(i[0] for i in m)
 
-    if seed is None:
-        seed = random.choice(start_word)
-        if seed in ',.!?;:-':
-            pnt += 1
-    # Если seed был None, то мы выбрали слово, которое точно находится в модели
-    elif seed not in start_word:
-        raise KeyError('Данного слова нет в модели')
+    pnt = 0
+    # Находим первые слова для текста
+    t = first_words(m, seed, start_words)
 
-    yield seed
-
-    # Поиск первых n-1 слов среди n-грамм, используя seed в качетсве первого
-    t = [seed] + list(random.choice(tuple(i[1:n-1] for i in model
-                                          if i[0] == seed)))
-    # Если не нашлись такие n-граммы, то берём любые
-    if len(t) == 1:
-        t += random.choice(tuple(i[1:n-1] for i in model))
+    yield t[0]
 
     while length + pnt - 1 > 0:
-        # Выбор нужного слова на основе n-1 предыдущих
-        temp = weighted_choices(tuple((i[-1], model[i])
-                                      for i in model if list(i[:-1]) == t))
-        if temp is None:
-            # Выбор нового слова, если не удалось найти подходящий по последним
-            temp = random.choice(start_word)
+        # Находим последующие слова
+        t = next_words(m, t, start_words)
 
-        if temp in ',.!?;:-':
+        if t[0] in ',.!?;:-':
             pnt += 1
 
-        # Удаляем первое слово, так как оно больше нам не нужно
-        t = t[1:] + [temp]
         length -= 1
-        # Берём первое слово
+
         yield t[0]
 
 
@@ -134,9 +160,10 @@ def main(args):
     :type args: Class
     :return: None
     """
-    model = load_model(args.model)
-    t = generate_text(model, args.length, args.seed)
+    m = model.load_model(args.model)
+    t = generate_text(m, args.length, args.seed)
     text = create_text(t)
+
     if args.output is None:
         print(text)
     else:

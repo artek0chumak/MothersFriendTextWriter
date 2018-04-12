@@ -44,7 +44,7 @@ def generate_text(model, length, seed):
     """
     Генерация текста
     :param model: Модель текстов
-    :param length: Длина текста в словах(знаки пунктуации считаются за слова)
+    :param length: Длина текста в словах(знаки пунктуации считаются отдельно)
     :param seed: Начальное слово
     :type model: dict
     :type length: int
@@ -54,17 +54,23 @@ def generate_text(model, length, seed):
     """
     n = len(next(iter(model)))
     pnt = 0
+    # Слова, с которых могут начинться предложения.
+    start_word = tuple(i[0] for i in model)
 
     if seed is None:
-        seed = random.choice(tuple(i[0] for i in model))
+        seed = random.choice(start_word)
         if seed in ',.!?;:-':
             pnt += 1
-    if seed not in tuple(i[0] for i in model):
-        raise ValueError('Данного слова нет в модели')
+    # Если seed был None, то мы выбрали слово, которое точно находится в модели
+    elif seed not in start_word:
+        raise KeyError('Данного слова нет в модели')
+
     yield seed
 
+    # Поиск первых n-1 слов среди n-грамм, используя seed в качетсве первого
     t = [seed] + list(random.choice(tuple(i[1:n-1] for i in model
                                           if i[0] == seed)))
+    # Если не нашлись такие n-граммы, то берём любые
     if len(t) == 1:
         t += random.choice(tuple(i[1:n-1] for i in model))
 
@@ -74,14 +80,16 @@ def generate_text(model, length, seed):
                                       for i in model if list(i[:-1]) == t))
         if temp is None:
             # Выбор нового слова, если не удалось найти подходящий по последним
-            temp = random.choice(tuple(i[0] for i in model))
+            temp = random.choice(start_word)
+
         if temp in ',.!?;:-':
             pnt += 1
 
         # Удаляем первое слово, так как оно больше нам не нужно
         t = t[1:] + [temp]
         length -= 1
-        yield temp
+        # Берём первое слово
+        yield t[0]
 
 
 def create_text(t):
@@ -93,12 +101,15 @@ def create_text(t):
     :rtype: str
     """
 
-    res = ''
+    # Добавляем первое слово
+    res = next(t)
+
     for i in t:
-        if i in ',.!?;:':
-            res += i
-        else:
-            res += ' ' + i
+        # Не добавляем пробел перед этими символами
+        if i not in ',.!?;:':
+            res += ' '
+
+        res += i
 
     return res
 
@@ -120,16 +131,16 @@ def main(args):
     """
     Главная функция
     :param args: Аргументы запуска генератора
-    :type args: dict
+    :type args: Class
     :return: None
     """
-    model = load_model(args['model'])
-    t = generate_text(model, args['length'], args['seed'])
+    model = load_model(args.model)
+    t = generate_text(model, args.length, args.seed)
     text = create_text(t)
-    if args['output'] is None:
+    if args.output is None:
         print(text)
     else:
-        save_text(text, args['output'])
+        save_text(text, args.output)
 
 
 if __name__ == "__main__":
@@ -143,5 +154,4 @@ if __name__ == "__main__":
     parser.add_argument('--output', action='store',
                         help='destination to output file.'
                              ' If it isn\'t set, uses stdout')
-    args = vars(parser.parse_args())
-    main(args)
+    main(parser.parse_args())

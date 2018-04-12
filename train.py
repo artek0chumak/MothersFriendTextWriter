@@ -8,27 +8,28 @@ import os
 import re
 from collections import Counter
 import pickle
-
-r_alpha_with_punc = re.compile('[а-яА-Я]+|[a-zA-Z]+|[,.!?;:-]')
-r_alphabet = re.compile('[а-яА-Я]+|[a-zA-Z]+')
+import sys
 
 
-def gen_token(files, punc):
+def gen_token(files, use_punc):
     """
     Генератор слов из файлов текстов
     :param files: Список путей к файлам
+    :param use_punc: Флаг пунктуации
     :type files: generator
+    :type use_punc: bool
     :return: Слово из файла
     :rtype: str
     """
+    # Используемые алфавиты
+    alpha = '[а-яА-Я]+|[a-zA-Z]+'
+    punc = '|[,.!?;:-]'
+
+    r = re.compile(alpha if not use_punc else alpha + punc)
     for file in files:
         for line in file:
-            if punc:
-                for token in r_alpha_with_punc.findall(file):
-                    yield token
-            else:
-                for token in r_alphabet.findall(line):
-                    yield token
+            for token in r.findall(line):
+                yield token
 
 
 def gen_lines(file, lc):
@@ -36,17 +37,16 @@ def gen_lines(file, lc):
     Генератор строк из файла
     :param file: Путь к файлу
     :param lc: Флаг на использование lower
-    :type file: str
+    :type file: file object
     :type lc: bool
     :return: Строку из файла
     :rtype: str
     """
-    with open(file, 'r') as f:
-        for line in f:
-            if lc:
-                yield line.lower()
-            else:
-                yield line
+    for line in file:
+        if lc:
+            yield line.lower()
+        else:
+            yield line
 
 
 def open_files(dest_file, lc):
@@ -60,16 +60,13 @@ def open_files(dest_file, lc):
     :rtype: list
     """
     if dest_file is None:
-        # Один input - одна строка в одном файле
-        if lc:
-            yield [input().lower()]
-        else:
-            yield [input()]
+        yield gen_lines(sys.stdin, lc)
     else:
         for root, dirs, files in os.walk(dest_file):
             for file in files:
                 if file.endswith('.txt'):
-                    yield gen_lines(os.path.join(root, file), lc)
+                    with open(os.path.join(root, file), 'r') as f:
+                        yield gen_lines(f, lc)
 
 
 def gen_ngramms(token, n):
@@ -95,10 +92,13 @@ def load_model(model_dest):
     :param model_dest: Расположение файла
     :type: str
     :return: Модель
-    :rtype: Counter
+    :rtype: Counter or None
     """
-    with open(model_dest, 'rb') as f:
-        return pickle.load(f)
+    try:
+        with open(model_dest, 'rb') as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        return None
 
 
 def save_model(model, model_dest):
@@ -114,37 +114,37 @@ def save_model(model, model_dest):
         pickle.dump(model, f)
 
 
-def train_model(ngramms, model_dest):
+def train_model(ngramms, model_dest, upd_it):
     """
     Главная функция обучения модели
     :param ngramms: Генератор n-грамм
     :param model_dest: Расположение файла модели
+    :param upd_it: Флаг обновления модели
     :type ngramms: generator
     :type model_dest: str
+    :type upd_it: bool
     :return: None
     """
-    if os.path.isfile(model_dest):
-        # Обновление модели
-        model = Counter(load_model(model_dest))
+    model = load_model(model_dest)
+    if upd_it:
         model.update([tuple(i) for i in ngramms])
-        save_model(model, model_dest)
     else:
-        # Создание модели
         model = Counter([tuple(i) for i in ngramms])
-        save_model(model, model_dest)
+
+    save_model(model, model_dest)
 
 
 def main(args):
     """
     Главная функция
     :param args: Аргументы запуска обучения
-    :type args: dict
+    :type args: class
     :return: None
     """
-    files = open_files(args['input_dir'], args['lc'])
-    token = gen_token(files, args['punc'])
-    ngramms = gen_ngramms(token, args['ngramms'])
-    train_model(ngramms, args['model'])
+    files = open_files(args.input_dir, args.lc)
+    token = gen_token(files, args.punc)
+    ngramms = gen_ngramms(token, args.ngramms)
+    train_model(ngramms, args.model, args.update)
 
 
 if __name__ == "__main__":
@@ -161,5 +161,6 @@ if __name__ == "__main__":
                         help='number of using words in one token')
     parser.add_argument('--punc', action='store_true',
                         help='add punctuation marks')
-    args = vars(parser.parse_args())
-    main(args)
+    parser.add_argument('--update', action='store_true',
+                        help='update model')
+    main(parser.parse_args())

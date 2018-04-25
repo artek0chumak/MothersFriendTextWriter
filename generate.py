@@ -101,13 +101,12 @@ def generate_text(model_ngramm, length, seed):
     # Слова, с которых могут начинться предложения.
     start_words = tuple(i[0] for i in model_ngramm)
 
-    pnt = 0
     # Находим первые слова для текста
     t = first_words(model_ngramm, seed, start_words)
 
     yield t[0]
 
-    while length + pnt - 1 > 0:
+    while length - 1 > 0:
         # Находим последующие слова
         t = next_words(model_ngramm, t, start_words)
 

@@ -125,11 +125,10 @@ def create_text(t):
     :rtype: str
     """
 
-    # Добавляем первое слово
-    res = next(t)
+    res = ''
 
     for i in t:
-        res += i
+        res += i + ' '
 
     return res
 

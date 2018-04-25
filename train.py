@@ -10,21 +10,17 @@ import sys
 import model
 
 
-def gen_token(files, use_punc):
+def gen_token(files):
     """
     Генератор слов из файлов текстов
     :param files: Список путей к файлам
-    :param use_punc: Флаг пунктуации
     :type files: generator
-    :type use_punc: bool
     :return: Слово из файла
     :rtype: str
     """
-    # Используемые алфавиты
     alpha = '[а-яА-Я]+|[a-zA-Z]+'
-    punc = '|[,.!?;:-]'
 
-    r = re.compile(alpha if not use_punc else alpha + punc)
+    r = re.compile(alpha)
     for file in files:
         for line in file:
             for token in r.findall(line):
@@ -93,7 +89,7 @@ def main(args):
     :return: None
     """
     files = open_files(args.input_dir, args.lc)
-    token = gen_token(files, args.punc)
+    token = gen_token(files)
     ngramms = gen_ngramms(token, args.ngramms)
     model.train_model(ngramms, args.model, args.update)
 
@@ -110,8 +106,6 @@ if __name__ == "__main__":
                         help='destination to model file')
     parser.add_argument('--ngramms', action='store', default=2, type=int,
                         help='number of using words in one token')
-    parser.add_argument('--punc', action='store_true',
-                        help='add punctuation marks')
     parser.add_argument('--update', action='store_true',
                         help='update model')
     main(parser.parse_args())

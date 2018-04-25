@@ -50,17 +50,19 @@ def train_model(ngramms, model_dest, upd_it):
     :return: None
     """
     try:
-        m = load_model(model_dest)
+        model = load_model(model_dest)
     except FileNotFoundError:
-        m = None
+        model = None
+
+    ngramm_tuples = [tuple(i) for i in ngramms]
 
     if upd_it:
         # Если пытаемся обновить несуществующую модель, вызываем исключение
-        if m is None:
+        if model is None:
             raise FileNotFoundError('Нет модели для обновления')
 
-        m.update([tuple(i) for i in ngramms])
+        model.update(ngramm_tuples)
     else:
-        m = Counter([tuple(i) for i in ngramms])
+        model = Counter(ngramm_tuples)
 
-    save_model(m, model_dest)
+    save_model(model, model_dest)

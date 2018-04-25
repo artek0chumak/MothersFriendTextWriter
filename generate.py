@@ -28,13 +28,13 @@ def weighted_choices(choices):
     return None
 
 
-def first_words(m, start, start_words):
+def first_words(model_ngramm, start, start_words):
     """
     Поиск первых слов
-    :param m: Модель текстов
+    :param model_ngramm: Модель текстов
     :param start: Начальное слово
     :param start_words: Список слов, с которых может начинаться предложения
-    :type m: Counter
+    :type model_ngramm: Counter
     :type start: str
     :type start_words: tuple
     :return: Список из n слов
@@ -50,29 +50,30 @@ def first_words(m, start, start_words):
 
     # Поиск первых n-1 слов среди n-грамм, используя
     # seed в качетсве первого
-    ngramm = [start] + list(random.choice(tuple(i[1:] for i in m
+    ngramm = [start] + list(random.choice(tuple(i[1:] for i in model_ngramm
                                                 if i[0] == start)))
     # Если не нашлись такие n-граммы, то берём любые
     if len(ngramm) == 1:
-        ngramm += random.choice(tuple(i[1:] for i in m))
+        ngramm += random.choice(tuple(i[1:] for i in model_ngramm))
 
     return ngramm
 
 
-def next_words(m, ngramm, start_words):
+def next_words(model_ngramm, ngramm, start_words):
     """
     Нахождение следующей nграммы
-    :param m: Модель текстов
+    :param model_ngramm: Модель текстов
     :param ngramm: Список слов
     :param start_words: Список слов, с которых может начинаться предложения
-    :type m: Counter
+    :type model_ngramm: Counter
     :type ngramm: list
     :type start_words: tuple
     :return: Список слов
     :rtype: list
     """
-    temp = weighted_choices(tuple((i[-1], m[i])
-                                  for i in m if list(i[:-1]) == ngramm[1:]))
+    temp = weighted_choices(tuple((i[-1], model_ngramm[i])
+                                  for i in model_ngramm
+                                  if list(i[:-1]) == ngramm[1:]))
 
     if temp is None:
         # Выбор нового слова, если
@@ -85,33 +86,30 @@ def next_words(m, ngramm, start_words):
     return ngramm
 
 
-def generate_text(m, length, seed):
+def generate_text(model_ngramm, length, seed):
     """
     Генерация текста
-    :param m: Модель текстов
-    :param length: Длина текста в словах(знаки пунктуации считаются отдельно)
+    :param model_ngramm: Модель текстов
+    :param length: Длина текста в словах
     :param seed: Начальное слово
-    :type m: dict or Counter
+    :type model_ngramm: dict or Counter
     :type length: int
     :type seed: str
     :return: Генератор слов
     :rtype: generator
     """
     # Слова, с которых могут начинться предложения.
-    start_words = tuple(i[0] for i in m)
+    start_words = tuple(i[0] for i in model_ngramm)
 
     pnt = 0
     # Находим первые слова для текста
-    t = first_words(m, seed, start_words)
+    t = first_words(model_ngramm, seed, start_words)
 
     yield t[0]
 
     while length + pnt - 1 > 0:
         # Находим последующие слова
-        t = next_words(m, t, start_words)
-
-        if t[0] in ',.!?;:-':
-            pnt += 1
+        t = next_words(model_ngramm, t, start_words)
 
         length -= 1
 
@@ -131,10 +129,6 @@ def create_text(t):
     res = next(t)
 
     for i in t:
-        # Не добавляем пробел перед этими символами
-        if i not in ',.!?;:':
-            res += ' '
-
         res += i
 
     return res
@@ -160,8 +154,8 @@ def main(args):
     :type args: Class
     :return: None
     """
-    m = model.load_model(args.model)
-    t = generate_text(m, args.length, args.seed)
+    model_ngramm = model.load_model(args.model)
+    t = generate_text(model_ngramm, args.length, args.seed)
     text = create_text(t)
 
     if args.output is None:

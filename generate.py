@@ -137,7 +137,7 @@ def main(args):
     """
     model_ngramm = model.load_model(args.model)
     text_gen = generate_text(model_ngramm, args.length, args.seed)
-    text = ' '.join([i for i in text_gen])
+    text = ' '.join(text_gen)
 
     if args.output is None:
         print(text)

@@ -102,34 +102,17 @@ def generate_text(model_ngramm, length, seed):
     start_words = tuple(i[0] for i in model_ngramm)
 
     # Находим первые слова для текста
-    t = first_words(model_ngramm, seed, start_words)
+    text_gen = first_words(model_ngramm, seed, start_words)
 
-    yield t[0]
+    yield text_gen[0]
 
     while length - 1 > 0:
         # Находим последующие слова
-        t = next_words(model_ngramm, t, start_words)
+        text_gen = next_words(model_ngramm, text_gen, start_words)
 
         length -= 1
 
-        yield t[0]
-
-
-def create_text(t):
-    """
-    Создает текст из списка слов
-    :param t: Генератор слов
-    :type t: generator
-    :return: Сгенерированный текст
-    :rtype: str
-    """
-
-    res = ''
-
-    for i in t:
-        res += i + ' '
-
-    return res
+        yield text_gen[0]
 
 
 def save_text(text, text_dest):
@@ -153,8 +136,8 @@ def main(args):
     :return: None
     """
     model_ngramm = model.load_model(args.model)
-    t = generate_text(model_ngramm, args.length, args.seed)
-    text = create_text(t)
+    text_gen = generate_text(model_ngramm, args.length, args.seed)
+    text = ' '.join([i for i in text_gen])
 
     if args.output is None:
         print(text)
